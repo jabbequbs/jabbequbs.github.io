@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Minesweeper</title>
+  <style type="text/css">
+    * { font-family: Verdana, sans-serif; box-sizing: border-box; }
+    html { background-color: silver; }
+    table { border-collapse: collapse; }
+    td { width: 30px; height: 30px; text-align: center; vertical-align: middle;
+      border: 1px solid black; background-color: gray; cursor: default; }
+    h3 { display: inline-block; width: 60px; }
+    .clicked { background-color: silver; }
+    .tagged { background-color: blue; }
+    .exploded { background-color: red; }
+    .killer { background-color: maroon; }
+  </style>
+</head>
+<body>
+
+  <div style="text-align:center;">
+    <div style="display:inline-block;">
+      <h3 id="timer" style="float:left;text-align:left;">0:00</h3>
+      <h3 id="mine-count" style="float:right;text-align:right;">40</h3>
+      <h3 id="message" style="text-align:center;">-_-</h3>
+      <table style="clear:both;"></table>
+      <p>
+        <button id="auto">Auto</button>
+        <button id="reset">Reset</button>
+      </p>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+
+    let minesweeper = {
+      mines: 99,
+      size: 25,
+      cells: [],
+      mineCells: [],
+      initialized: false,
+      gameOver: false,
+      startTime: null,
+      duration: null,
+      timerId: null,
+      doubleClickCell: null,
+      doubleClickMode: false,
+      doubleClickTimer: null,
+      finishedGuessing: false
+    }
+
+    const cellClick = function(gameHandler){
+      let eventHandler = function(ev){
+        ev.preventDefault();
+        if (minesweeper.gameOver){
+          return false;
+        } else {
+          let rowNum = ev.target.dataset.rowNum,
+            colNum = ev.target.dataset.colNum;
+          gameHandler(minesweeper.cells[rowNum][colNum]);
+        }
+        return false;
+      }
+      return eventHandler;
+    }
+
+    const startTimer = function(){
+      minesweeper.startTime = Date.now();
+      return setInterval(function(){
+        minesweeper.duration = (Date.now() - minesweeper.startTime)/1000;
+        let minutes = Math.floor(minesweeper.duration/60),
+          seconds = Math.floor(minesweeper.duration)%60,
+          display = minutes+":"+(seconds < 10 ? "0" : "")+seconds;
+        document.querySelector("#timer").innerText = display;
+      }, 1000);
+    }
+
+    const tagOrTest = function(gameCell){
+      if (gameCell.isClicked){
+        testCell(gameCell);
+      } else if (gameCell.isTagged){
+        tagCell(gameCell);
+      } else if (gameCell.neighbours.filter(n => n.isClicked).length > 0){
+        tagCell(gameCell);
+      } else {
+        testCell(gameCell);
+      }
+    }
+
+    const testCell = function(gameCell){
+      let gameCellRowNum = gameCell.el.dataset.rowNum,
+        gameCellColNum = gameCell.el.dataset.colNum;
+      if (minesweeper.doubleClickMode){
+        // Single click
+        if (!minesweeper.doubleClickCell){
+          minesweeper.doubleClickCell = gameCell;
+          minesweeper.doubleClickTimer = setTimeout(function(){
+            if (minesweeper.doubleClickCell.isClicked){
+              testCell(minesweeper.doubleClickCell);
+            } else {
+              tagCell(minesweeper.doubleClickCell);
+            }
+            minesweeper.doubleClickTimer = null;
+            minesweeper.doubleClickCell = null;
+          }, 250);
+          return;
+
+        // Double click
+        } else {
+          clearTimeout(minesweeper.doubleClickTimer);
+          gameCell = minesweeper.doubleClickCell;
+          minesweeper.doubleClickCell = null;
+        }
+      }
+      if (!minesweeper.initialized){
+        // create the mines and assign mine counts
+        for (let i = 0; i < minesweeper.mines; i++){
+          let rowNum, colNum, mineCell;
+          while (true){
+            rowNum = Math.floor(Math.random()*minesweeper.size),
+              colNum = Math.floor(Math.random()*minesweeper.size),
+              mineCell = minesweeper.cells[rowNum][colNum];
+            if (mineCell.isMine){
+              continue;
+            } else if (rowNum != gameCellRowNum || colNum != gameCellColNum){
+              break;
+            }
+          }
+          mineCell.isMine = true;
+          // mineCell.el.classList.add("exploded");
+          for (let j = 0; j < mineCell.neighbours.length; j++){
+            mineCell.neighbours[j].neighbourMines++;
+          }
+          minesweeper.mineCells.push(mineCell);
+        }
+        minesweeper.timerId = startTimer();
+        minesweeper.initialized = true;
+      }
+
+      if (gameCell.isTagged){
+        return;
+      } else if (gameCell.isClicked){
+        let taggedNeighbours = gameCell.neighbours
+          .filter(cell => cell.isTagged).length;
+        if (taggedNeighbours >= gameCell.neighbourMines){
+          for (let i = 0; i < gameCell.neighbours.length; i++){
+            if (!gameCell.neighbours[i].isClicked && !gameCell.neighbours[i].isTagged){
+              testCell(gameCell.neighbours[i]);
+            }
+          }
+          return;
+        }
+      }
+
+      gameCell.isClicked = true;
+      if (gameCell.isMine){
+        gameCell.el.classList.add("killer");
+        for (let i = 0; i < minesweeper.mineCells.length; i++){
+          minesweeper.mineCells[i].el.classList.add("exploded");
+        }
+        minesweeper.gameOver = true;
+        clearInterval(minesweeper.timerId);
+        document.querySelector("#message").innerText = "x_X";
+        return;
+      } else if (gameCell.neighbourMines === 0){
+        for (let i = 0; i < gameCell.neighbours.length; i++){
+          if (!gameCell.neighbours[i].isClicked){
+            testCell(gameCell.neighbours[i]);
+          }
+        }
+      }
+
+      gameCell.el.classList.add("clicked");
+      if (gameCell.neighbourMines !== 0){
+        gameCell.el.innerText = gameCell.neighbourMines;
+      }
+
+      let remainingCells = minesweeper.cells
+        .map(row => row.filter(cell => !cell.isClicked && !cell.isMine).length)
+        .reduce((a,b) => (a+b));
+      if (remainingCells === 0){
+        minesweeper.gameOver = true;
+        clearInterval(minesweeper.timerId);
+        document.querySelector("#message").innerText = "^_^";
+      }
+    }
+
+    const tagCell = function(gameCell){
+      if (!gameCell.isClicked){
+        gameCell.el.classList.toggle("tagged");
+        gameCell.isTagged = gameCell.el.classList.contains("tagged");
+        if (gameCell.isTagged){
+          minesweeper.mines--;
+        } else {
+          minesweeper.mines++;
+        }
+        document.querySelector("#mine-count").innerText = minesweeper.mines;
+      }
+    }
+
+    const createCell = function(el){
+      return {
+        el: el,
+        isMine: false,
+        neighbourMines: 0,
+        neighbours: [],
+        isClicked: false,
+        isTagged: false
+      };
+    }
+
+    const autoComplete = function(){
+      let autoCompleteId = null;
+      autoCompleteId = setInterval(function(){
+        if (minesweeper.gameOver){
+          clearInterval(autoCompleteId);
+          return;
+        }
+        let unClickedCells = [];
+        for (let rowNum = 0; rowNum < minesweeper.cells.length; rowNum++){
+          let row = minesweeper.cells[rowNum];
+          for (let colNum = 0; colNum < row.length; colNum++){
+            let gameCell = row[colNum];
+            if (gameCell.isTagged){
+              continue;
+            }
+            if (!gameCell.isClicked && !gameCell.isTagged){
+              unClickedCells.push(gameCell);
+            } else if (gameCell.neighbourMines){
+              let neighbours = gameCell.neighbours.filter(n => !n.isClicked),
+                unTaggedNeighbours = neighbours.filter(n => !n.isTagged),
+                taggedNeighbours = neighbours.filter(n => n.isTagged);
+                needsTags = gameCell.neighbourMines - taggedNeighbours.length;
+              if (needsTags > 0 && needsTags === unTaggedNeighbours.length){
+                for (let i = 0; i < needsTags; i++){
+                  tagCell(unTaggedNeighbours[i]);
+                }
+                return;
+              } else if (needsTags === 0 && unTaggedNeighbours.length > 0){
+                testCell(gameCell);
+                minesweeper.finishedGuessing = true;
+                return;
+              }
+            }
+          }
+        }
+        if (unClickedCells.length === 0){
+          console.log("Yay!");
+          clearInterval(autoCompleteId);
+          return;
+        } else if (minesweeper.finishedGuessing){
+          console.log("I need a boost");
+          clearInterval(autoCompleteId);
+          return;
+        }
+        let choice = Math.floor(Math.random()*unClickedCells.length);
+        console.log(unClickedCells[choice].el);
+        testCell(unClickedCells[choice]);
+        if (minesweeper.gameOver){
+          console.log("Ouch");
+          clearInterval(autoCompleteId);
+          return;
+        }
+      }, 32);
+      console.log("Starting auto-complete: " + autoCompleteId);
+    }
+
+    window.onload = function(){
+      document.querySelector("#mine-count").innerText = minesweeper.mines;
+      let tbl = document.querySelector("table");
+      for (let i = 0; i < minesweeper.size; i++){
+        let tblRow = document.createElement("tr"),
+          cellRow = [];
+        for (let j = 0; j < minesweeper.size; j++){
+          let tblCell = document.createElement("td"),
+            gameCell = createCell(tblCell);
+          tblCell.dataset.rowNum = i;
+          tblCell.dataset.colNum = j;
+          tblCell.addEventListener("contextmenu", cellClick(testCell));
+          tblCell.addEventListener("click", cellClick(tagOrTest));
+          tblRow.appendChild(tblCell);
+          cellRow.push(gameCell);
+        }
+        tbl.appendChild(tblRow);
+        minesweeper.cells.push(cellRow);
+      }
+      for (let rowNum = 0; rowNum < minesweeper.size; rowNum++){
+        for (let colNum = 0; colNum< minesweeper.size; colNum++){
+          for (let rowOffset = -1; rowOffset <= 1; rowOffset++){
+            let _rowNum = rowNum+rowOffset;
+            if (_rowNum < 0 || _rowNum >= minesweeper.size){
+              continue
+            }
+            for (let colOffset = -1; colOffset <= 1; colOffset++){
+              let _colNum = colNum+colOffset;
+              if (_colNum < 0 || _colNum >= minesweeper.size){
+                continue;
+              } else if (rowOffset == 0 && colOffset == 0){
+                continue;
+              }
+              minesweeper.cells[rowNum][colNum].neighbours.push(
+                minesweeper.cells[_rowNum][_colNum]);
+            }
+          }
+        }
+      }
+      document.querySelector("#auto").addEventListener("click", autoComplete);
+      document.querySelector("#reset").addEventListener("click", function(){
+        window.location.reload();
+      });
+    }
+  </script>
+
+</body>
+</html>

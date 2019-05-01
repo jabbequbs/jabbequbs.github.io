@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NHL Standings - Grid Settings</title>
+  <style type="text/css">
+    * { font-family: Verdana, sans-serif; box-sizing: border-box; }
+    table { border-collapse: collapse; float: left; margin-right: 20px; margin-bottom: 20px; }
+    td { min-width: 50px; padding: 10px; border: 1px solid silver; white-space: nowrap; }
+    a { color: blue; } a:active { color: red; }
+    .section { font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div id="main"></div>
+  <div style="clear:both; white-space:nowrap;">
+    <button id="save">Save</button>
+    | <button id="reset">Reset</button>
+    | <a href="standings.html">Standings</a>
+  </div>
+
+  <script type="text/javascript">
+    let
+      tableColumns = {
+        "#": (team => team.leagueRank),
+        "Team Name": (team => team.team.name),
+        "Team": (team => team.team.abbreviation),
+        "GP": (team => team.gamesPlayed),
+        "W": (team => team.leagueRecord.wins),
+        "L": (team => team.leagueRecord.losses),
+        "OT": (team => team.leagueRecord.ot),
+        "PTS": (team => team.points),
+        "RW": (team => team.regulationWins),
+        "ROW": (team => team.row),
+        "GF": (team => team.goalsScored),
+        "GA": (team => team.goalsAgainst),
+        "DIFF": (team => differential(team)),
+        "HOME": (team => teamRecord(team, "home")),
+        "AWAY": (team => teamRecord(team, "away")),
+        "S/O": (team => teamRecord(team, "shootOuts")),
+        "L10": (team => teamRecord(team, "lastTen")),
+        "STRK": (team => team.streak.streakCode),
+        "Previous": (team => previousGame(team)),
+        "Next": (team => nextGame(team))
+      },
+      defaultColumns = ["#", "Team", "GP", "PTS", "STRK", "Previous", "Next"],
+      chosenColumns = null,
+      games = {};
+
+    const getColumns = function(){
+      if (chosenColumns){
+        return chosenColumns;
+      }
+      let settings = document.cookie.split("; ").filter(c => c.startsWith("nhl_grid="))[0];
+      if (!settings){
+        console.log("No cookie settings, using defaults");
+        console.log(defaultColumns);
+        chosenColumns = defaultColumns;
+        return chosenColumns;
+      }
+      settings = settings.split("=")[1];
+      chosenColumns = JSON.parse(decodeURIComponent(settings));
+      console.log("Loaded settings from cookie");
+      console.log(chosenColumns)
+      return chosenColumns;
+    }
+
+    const createSettingsTable = function(){
+      let container = document.querySelector("#main"),
+        tbl = document.createElement("table"),
+        allColumns = Object.keys(tableColumns),
+        chosenColumns = getColumns(),
+        settingsHeadings = ["", "Column"],
+        row = document.createElement("tr");
+      for (let i = 0; i < settingsHeadings.length; i++){
+        let cell = document.createElement("td");
+        cell.classList.add("section");
+        cell.innerText = settingsHeadings[i];
+        row.appendChild(cell);
+      }
+      tbl.appendChild(row);
+
+      for (let i = 0; i < allColumns.length; i++){
+        let cell1 = document.createElement("td"),
+          checkbox = document.createElement("input"),
+          cell2 = document.createElement("td"),
+          order = document.createElement("input"),
+          cell3 = document.createElement("td");
+        row = document.createElement("tr");
+        tbl.appendChild(row);
+
+        row.appendChild(cell1);
+        cell1.appendChild(checkbox);
+        checkbox.type = "checkbox";
+        checkbox.dataset.column = allColumns[i];
+        checkbox.checked = chosenColumns.includes(allColumns[i]);
+
+        // row.appendChild(cell2);
+        // cell2.appendChild(order);
+        // order.type = "text";
+        // order.dataset.column = allColumns[i];
+        // if (chosenColumns.includes(allColumns[i])){
+        //   order.value = chosenColumns.indexOf(allColumns[i])+1;
+        // }
+
+        row.appendChild(cell3);
+        cell3.innerText = allColumns[i];
+      }
+      container.appendChild(tbl);
+    }
+
+    window.onload = function(){
+      createSettingsTable();
+
+      document.querySelector("#save").onclick = function(){
+        let checkboxes = Array.from(document.querySelectorAll("input[type=checkbox]"))
+          .filter(e => e.checked)
+          .map(e => [e.dataset.column]);
+        //   .map(e => [
+        //     e.dataset.column,
+        //     parseInt(e.parentNode.parentNode.querySelector("input[type=text]").value) || 99]);
+        // checkboxes.sort((a, b) => a[1]-b[1]);
+        document.cookie = "nhl_grid=" + encodeURIComponent(JSON.stringify(checkboxes.map(c => c[0])));
+        window.location.reload();
+      }
+
+      document.querySelector("#reset").onclick = function(){
+        document.cookie = "nhl_grid=;expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        console.log(document.cookie);
+        window.location.reload();
+      }
+    }
+  </script>
+
+</body>
+</html>

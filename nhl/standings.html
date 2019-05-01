@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NHL Standings</title>
+  <style type="text/css">
+    * { font-family: Verdana, sans-serif; box-sizing: border-box; }
+    table { border-collapse: collapse; float: left; margin-right: 20px; margin-bottom: 20px; }
+    td { min-width: 50px; padding: 10px; border: 1px solid silver; white-space: nowrap; }
+    a { color: blue; } a:active { color: red; }
+    .section { font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div id="main"></div>
+  <div style="clear:both; white-space:nowrap;">
+    <a href="settings.html">Settings</a>
+    <!-- | <a href="all_columns.html">Standings (all columns)</a> -->
+    | <span id="loading"></span>
+  </div>
+
+  <script type="text/javascript">
+    let
+      apiUrl = "https://statsapi.web.nhl.com/api/v1/standings/wildCardWithLeaders?hydrate=record(overall),division,conference,team(nextSchedule(team),previousSchedule(team))&season=20192020",
+      // apiUrl = "wildCardWithLeaders.json",
+      allData = null,
+      teamLists = {
+        Metropolitan: [],
+        Atlantic: [],
+        East: [],
+        Central: [],
+        Pacific: [],
+        West: []
+      },
+      tableColumns = {
+        "#": (team => team.leagueRank),
+        "Team Name": (team => team.team.name),
+        "Team": (team => team.team.abbreviation),
+        "GP": (team => team.gamesPlayed),
+        "W": (team => team.leagueRecord.wins),
+        "L": (team => team.leagueRecord.losses),
+        "OT": (team => team.leagueRecord.ot),
+        "PTS": (team => team.points),
+        "RW": (team => team.regulationWins),
+        "ROW": (team => team.row),
+        "GF": (team => team.goalsScored),
+        "GA": (team => team.goalsAgainst),
+        "DIFF": (team => differential(team)),
+        "HOME": (team => teamRecord(team, "home")),
+        "AWAY": (team => teamRecord(team, "away")),
+        "S/O": (team => teamRecord(team, "shootOuts")),
+        "L10": (team => teamRecord(team, "lastTen")),
+        "STRK": (team => team.streak.streakCode),
+        "Previous": (team => previousGame(team)),
+        "Next": (team => nextGame(team))
+      },
+      defaultColumns = ["#", "Team", "GP", "PTS", "STRK", "Previous", "Next"],
+      chosenColumns = null,
+      games = {};
+
+    const createRow = function(tbl, data){
+      let row = document.createElement("tr");
+      data.forEach(function(item){
+        let cell = document.createElement("td");
+        cell.innerText = item;
+        row.appendChild(cell);
+      });
+      tbl.appendChild(row);
+    }
+
+    const previousGame = function(team){
+      let date = team.team.previousSchedule.dates[0].date,
+        home = team.team.previousSchedule.dates[0].games[0].teams.home.team.abbreviation,
+        homeScore = "" + team.team.previousSchedule.dates[0].games[0].teams.home.score,
+        away = team.team.previousSchedule.dates[0].games[0].teams.away.team.abbreviation,
+        awayScore = "" + team.team.previousSchedule.dates[0].games[0].teams.away.score,
+        winner = null,
+        loser = null;
+      date = date.substring(5).replace("-", "/");
+      if (homeScore > awayScore){
+        winner = home + " " + homeScore;
+        loser = away + " " + awayScore;
+      } else {
+        winner = away + " " + awayScore;
+        loser = home + " " + homeScore;
+      }
+      return [date, winner, "-", loser].join(" ");
+    }
+
+    const nextGame = function(team){
+      try {
+        let date = new Date(team.team.nextSchedule.dates[0].games[0].gameDate),
+          minutes = date.getMinutes() < 10 ? "0"+date.getMinutes() : date.getMinutes(),
+          day = date.getHours()+":"+minutes+" "+(date.getMonth()+1)+"/"+date.getDate(),
+          home = team.team.nextSchedule.dates[0].games[0].teams.home.team.abbreviation,
+          away = team.team.nextSchedule.dates[0].games[0].teams.away.team.abbreviation,
+          atHome = home === team.team.abbreviation;
+        return [day, atHome ? "vs" : "@", atHome ? away : home].join(" ")
+      } catch (err) {
+        console.log(err);
+        return "";
+      }
+    }
+
+    const differential = function(team){
+      let result = team.goalsScored-team.goalsAgainst;
+      return (result > 0 ? "+" : "") + result;
+    }
+
+    const teamRecord = function(team, name){
+      let record = team.records.overallRecords.filter(r => r.type === name)[0],
+        result = record.wins+"-"+record.losses;
+      if (name === "shootOuts"){
+        return result;
+      } else {
+        return result+"-"+record.ot;
+      }
+    }
+
+    const getColumns = function(){
+      if (chosenColumns){
+        return chosenColumns;
+      }
+      let settings = document.cookie.split("; ").filter(c => c.startsWith("nhl_grid="))[0];
+      if (!settings){
+        chosenColumns = defaultColumns;
+        return chosenColumns;
+      }
+      settings = settings.split("=")[1];
+      chosenColumns = JSON.parse(decodeURIComponent(settings));
+      return chosenColumns;
+    }
+
+    const createTable = function(listNames){
+      let container = document.querySelector("#main"),
+        tbl = document.createElement("table"),
+        columns = getColumns();
+      createRow(tbl, columns);
+      for (let i = 0; i < listNames.length; i++){
+        let row = document.createElement("tr");
+        let cell = document.createElement("td");
+        cell.colSpan = columns.length;
+        cell.innerHTML = '<span class="section">#</span>'.replace("#", listNames[i]);
+        row.appendChild(cell);
+        tbl.appendChild(row)
+        for (let j = 0; j < teamLists[listNames[i]].length; j++){
+          let team = teamLists[listNames[i]][j];
+          createRow(tbl, columns.map(c => tableColumns[c](team)));
+        }
+      }
+      container.appendChild(tbl);
+    }
+
+    window.onload = function(){
+      let startTime = Date.now();
+      fetch(apiUrl, {method: "GET"})
+        .then(function(response){
+          if (!response.ok){
+            alert("Failed to retrieve statistics");
+            throw new Error("Request failed");
+          }
+          return response.json()
+        })
+        .then(function(data){
+          allData = data;
+          for (let i = 0; i < data.records.length; i++){
+            let record = data.records[i],
+              conference = record.conference.shortName || "",
+              division = (record.division || {}).name || "";
+            let mainName = division || conference;
+            teamLists[mainName] = record.teamRecords;
+          }
+          createTable(["Metropolitan", "Atlantic", "East"]);
+          createTable(["Central", "Pacific", "West"]);
+          let duration = (Date.now() - startTime)/1000;
+          document.querySelector("#loading").innerText = "Loaded in " + duration + " seconds";
+        });
+    }
+  </script>
+
+</body>
+</html>
