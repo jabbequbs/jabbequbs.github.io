@@ -14,7 +14,30 @@
 </head>
 <body>
 
-  <div id="main"></div>
+  <div id="main">
+    <table>
+      <tr><td><input type="checkbox" data-column="#"></td><td>#</td>
+      <tr><td><input type="checkbox" data-column="Team Name"></td><td>Team Name</td>
+      <tr><td><input type="checkbox" data-column="Team"></td><td>Team</td>
+      <tr><td><input type="checkbox" data-column="GP"></td><td>GP</td>
+      <tr><td><input type="checkbox" data-column="W"></td><td>W</td>
+      <tr><td><input type="checkbox" data-column="L"></td><td>L</td>
+      <tr><td><input type="checkbox" data-column="OT"></td><td>OT</td>
+      <tr><td><input type="checkbox" data-column="PTS"></td><td>PTS</td>
+      <tr><td><input type="checkbox" data-column="RW"></td><td>RW</td>
+      <tr><td><input type="checkbox" data-column="ROW"></td><td>ROW</td>
+      <tr><td><input type="checkbox" data-column="GF"></td><td>GF</td>
+      <tr><td><input type="checkbox" data-column="GA"></td><td>GA</td>
+      <tr><td><input type="checkbox" data-column="DIFF"></td><td>DIFF</td>
+      <tr><td><input type="checkbox" data-column="HOME"></td><td>HOME</td>
+      <tr><td><input type="checkbox" data-column="AWAY"></td><td>AWAY</td>
+      <tr><td><input type="checkbox" data-column="S/O"></td><td>S/O</td>
+      <tr><td><input type="checkbox" data-column="L10"></td><td>L10</td>
+      <tr><td><input type="checkbox" data-column="STRK"></td><td>STRK</td>
+      <tr><td><input type="checkbox" data-column="Previous"></td><td>Previous</td>
+      <tr><td><input type="checkbox" data-column="Next"></td><td>Next</td>
+    </table>
+  </div>
   <div style="clear:both; white-space:nowrap;">
     <button id="save">Save</button>
     | <button id="reset">Reset</button>
@@ -23,31 +46,8 @@
 
   <script type="text/javascript">
     let
-      tableColumns = {
-        "#": (team => team.leagueRank),
-        "Team Name": (team => team.team.name),
-        "Team": (team => team.team.abbreviation),
-        "GP": (team => team.gamesPlayed),
-        "W": (team => team.leagueRecord.wins),
-        "L": (team => team.leagueRecord.losses),
-        "OT": (team => team.leagueRecord.ot),
-        "PTS": (team => team.points),
-        "RW": (team => team.regulationWins),
-        "ROW": (team => team.row),
-        "GF": (team => team.goalsScored),
-        "GA": (team => team.goalsAgainst),
-        "DIFF": (team => differential(team)),
-        "HOME": (team => teamRecord(team, "home")),
-        "AWAY": (team => teamRecord(team, "away")),
-        "S/O": (team => teamRecord(team, "shootOuts")),
-        "L10": (team => teamRecord(team, "lastTen")),
-        "STRK": (team => team.streak.streakCode),
-        "Previous": (team => previousGame(team)),
-        "Next": (team => nextGame(team))
-      },
       defaultColumns = ["#", "Team", "GP", "PTS", "STRK", "Previous", "Next"],
-      chosenColumns = null,
-      games = {};
+      chosenColumns = null;
 
     const getColumns = function(){
       if (chosenColumns){
@@ -67,63 +67,19 @@
       return chosenColumns;
     }
 
-    const createSettingsTable = function(){
-      let container = document.querySelector("#main"),
-        tbl = document.createElement("table"),
-        allColumns = Object.keys(tableColumns),
-        chosenColumns = getColumns(),
-        settingsHeadings = ["", "Column"],
-        row = document.createElement("tr");
-      for (let i = 0; i < settingsHeadings.length; i++){
-        let cell = document.createElement("td");
-        cell.classList.add("section");
-        cell.innerText = settingsHeadings[i];
-        row.appendChild(cell);
-      }
-      tbl.appendChild(row);
-
-      for (let i = 0; i < allColumns.length; i++){
-        let cell1 = document.createElement("td"),
-          checkbox = document.createElement("input"),
-          cell2 = document.createElement("td"),
-          order = document.createElement("input"),
-          cell3 = document.createElement("td");
-        row = document.createElement("tr");
-        tbl.appendChild(row);
-
-        row.appendChild(cell1);
-        cell1.appendChild(checkbox);
-        checkbox.type = "checkbox";
-        checkbox.dataset.column = allColumns[i];
-        checkbox.checked = chosenColumns.includes(allColumns[i]);
-
-        // row.appendChild(cell2);
-        // cell2.appendChild(order);
-        // order.type = "text";
-        // order.dataset.column = allColumns[i];
-        // if (chosenColumns.includes(allColumns[i])){
-        //   order.value = chosenColumns.indexOf(allColumns[i])+1;
-        // }
-
-        row.appendChild(cell3);
-        cell3.innerText = allColumns[i];
-      }
-      container.appendChild(tbl);
-    }
-
     window.onload = function(){
-      createSettingsTable();
+      let columns = getColumns(),
+        checkboxes = Array.from(document.querySelectorAll("input[type=checkbox]"));
+      for (let i = 0; i < checkboxes.length; i++){
+        checkboxes[i].checked = columns.includes(checkboxes[i].dataset.column);
+      }
 
       document.querySelector("#save").onclick = function(){
         let checkboxes = Array.from(document.querySelectorAll("input[type=checkbox]"))
           .filter(e => e.checked)
           .map(e => [e.dataset.column]);
-        //   .map(e => [
-        //     e.dataset.column,
-        //     parseInt(e.parentNode.parentNode.querySelector("input[type=text]").value) || 99]);
-        // checkboxes.sort((a, b) => a[1]-b[1]);
         document.cookie = "nhl_grid=" + encodeURIComponent(JSON.stringify(checkboxes.map(c => c[0])));
-        window.location.reload();
+        window.location.href = "standings.html";
       }
 
       document.querySelector("#reset").onclick = function(){
