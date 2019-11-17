@@ -75,10 +75,13 @@
       }
 
       document.querySelector("#save").onclick = function(){
-        let checkboxes = Array.from(document.querySelectorAll("input[type=checkbox]"))
-          .filter(e => e.checked)
-          .map(e => [e.dataset.column]);
-        document.cookie = "nhl_grid=" + encodeURIComponent(JSON.stringify(checkboxes.map(c => c[0])));
+        let expiry = new Date(),
+          checkboxes = Array.from(document.querySelectorAll("input[type=checkbox]"))
+            .filter(e => e.checked)
+            .map(e => [e.dataset.column]),
+          cookieString = encodeURIComponent(JSON.stringify(checkboxes.map(c => c[0])));
+        expiry.setTime(Date.now() + 31536000000); // +1 year
+        document.cookie = "nhl_grid="+cookieString+";expires="+expiry.toUTCString()+";";
         window.location.href = "standings.html";
       }
 
