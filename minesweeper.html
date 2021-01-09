@@ -277,8 +277,8 @@
             gameCell = createCell(tblCell);
           tblCell.dataset.rowNum = i;
           tblCell.dataset.colNum = j;
-          tblCell.addEventListener("contextmenu", cellClick(testCell));
-          tblCell.addEventListener("click", cellClick(tagOrTest));
+          tblCell.addEventListener("contextmenu", cellClick(tagCell));
+          tblCell.addEventListener("click", cellClick(testCell));
           tblRow.appendChild(tblCell);
           cellRow.push(gameCell);
         }
