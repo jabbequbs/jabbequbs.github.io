@@ -24,16 +24,8 @@
   <script type="text/javascript">
     let
       apiUrl = "https://statsapi.web.nhl.com/api/v1/standings/wildCardWithLeaders?hydrate=record(overall),division,conference,team(nextSchedule(team),previousSchedule(team))&season=20202021",
-      // apiUrl = "wildCardWithLeaders.json",
       allData = null,
-      teamLists = {
-        Metropolitan: [],
-        Atlantic: [],
-        East: [],
-        Central: [],
-        Pacific: [],
-        West: []
-      },
+      teamLists = {},
       tableColumns = {
         "#": (team => team.leagueRank),
         "Team Name": (team => team.team.name),
@@ -174,9 +166,11 @@
               division = (record.division || {}).name || "";
             let mainName = division || conference;
             teamLists[mainName] = record.teamRecords;
+            console.log(mainName);
           }
-          createTable(["Metropolitan", "Atlantic", "East"]);
-          createTable(["Central", "Pacific", "West"]);
+          let divisionList = Array.from(Object.keys(teamLists)).sort();
+          createTable(divisionList.slice(0, divisionList.length/2));
+          createTable(divisionList.slice(divisionList.length/2));
           let duration = (Date.now() - startTime)/1000;
           document.querySelector("#loading").innerText = "Loaded in " + duration + " seconds";
         });
