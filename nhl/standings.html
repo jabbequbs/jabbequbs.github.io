@@ -44,7 +44,7 @@
         "AWAY": (team => teamRecord(team, "away")),
         "S/O": (team => teamRecord(team, "shootOuts")),
         "L10": (team => teamRecord(team, "lastTen")),
-        "STRK": (team => team.streak.streakCode),
+        "STRK": (team => (team.streak||{}).streakCode||""),
         "Previous": (team => previousGame(team)),
         "Next": (team => nextGame(team))
       },
@@ -166,11 +166,12 @@
               division = (record.division || {}).name || "";
             let mainName = division || conference;
             teamLists[mainName] = record.teamRecords;
-            console.log(mainName);
           }
-          let divisionList = Array.from(Object.keys(teamLists)).sort();
-          createTable(divisionList.slice(0, divisionList.length/2));
-          createTable(divisionList.slice(divisionList.length/2));
+          // let divisionList = Array.from(Object.keys(teamLists)).sort((a, b) => divisions[b]);
+          // createTable(divisionList.slice(0, divisionList.length/2));
+          // createTable(divisionList.slice(divisionList.length/2));
+          createTable(["Atlantic", "Metropolitan", "East"]);
+          createTable(["Central", "Pacific", "West"]);
           let duration = (Date.now() - startTime)/1000;
           document.querySelector("#loading").innerText = "Loaded in " + duration + " seconds";
         });
