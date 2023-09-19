@@ -23,7 +23,7 @@
 
   <script type="text/javascript">
     let
-      apiUrl = "https://statsapi.web.nhl.com/api/v1/standings/wildCardWithLeaders?hydrate=record(overall),division,conference,team(nextSchedule(team),previousSchedule(team))&season=20222023",
+      apiUrl = "https://statsapi.web.nhl.com/api/v1/standings/wildCardWithLeaders?hydrate=record(overall),division,conference,team(nextSchedule(team),previousSchedule(team))&season=20232024",
       allData = null,
       teamLists = {},
       tableColumns = {
@@ -63,6 +63,9 @@
     }
 
     const previousGame = function(team){
+      if (!team.team.previousSchedule){
+        return "";
+      }
       let date = team.team.previousSchedule.dates[0].date,
         home = team.team.previousSchedule.dates[0].games[0].teams.home.team.abbreviation,
         homeScore = "" + team.team.previousSchedule.dates[0].games[0].teams.home.score,
@@ -82,18 +85,16 @@
     }
 
     const nextGame = function(team){
-      try {
-        let date = new Date(team.team.nextSchedule.dates[0].games[0].gameDate),
-          minutes = date.getMinutes() < 10 ? "0"+date.getMinutes() : date.getMinutes(),
-          day = date.getHours()+":"+minutes+" "+(date.getMonth()+1)+"/"+date.getDate(),
-          home = team.team.nextSchedule.dates[0].games[0].teams.home.team.abbreviation,
-          away = team.team.nextSchedule.dates[0].games[0].teams.away.team.abbreviation,
-          atHome = home === team.team.abbreviation;
-        return [day, atHome ? "vs" : "@", atHome ? away : home].join(" ")
-      } catch (err) {
-        console.log(err);
+      if (!team.team.nextSchedule){
         return "";
       }
+      let date = new Date(team.team.nextSchedule.dates[0].games[0].gameDate),
+        minutes = date.getMinutes() < 10 ? "0"+date.getMinutes() : date.getMinutes(),
+        day = date.getHours()+":"+minutes+" "+(date.getMonth()+1)+"/"+date.getDate(),
+        home = team.team.nextSchedule.dates[0].games[0].teams.home.team.abbreviation,
+        away = team.team.nextSchedule.dates[0].games[0].teams.away.team.abbreviation,
+        atHome = home === team.team.abbreviation;
+      return [day, atHome ? "vs" : "@", atHome ? away : home].join(" ")
     }
 
     const differential = function(team){
